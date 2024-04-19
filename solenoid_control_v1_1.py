@@ -31,7 +31,6 @@ def on_disconnect(client, userdata, rc):
 def exponential_backoff_reconnect():
     attempt = 0
     while True:
-        # Introduce jitter in the delay calculation
         jitter = random.uniform(0, 30)  # Up to 30 seconds of random delay
         delay = min(2 ** attempt + jitter, 300)  # Cap the delay at 5 minutes
         print(f"Reconnecting in {delay:.2f} seconds...")
@@ -49,10 +48,6 @@ def on_message(client, userdata, msg):
     elif message == "off":
         GPIO.output(valve_pin, GPIO.LOW)
 
-client.on_connect = on_connect
-client.on_disconnect = on_disconnect
-client.on_message = on_message
-
 def connect_to_broker():
     try:
         client.connect(MQTT_BROKER, MQTT_PORT, 60)
@@ -61,11 +56,12 @@ def connect_to_broker():
         print("\nExiting program")
     except Exception as e:
         print(f"Error connecting to MQTT broker: {e}")
-        exponential_backoff_reconnect()
-
-finally:
-    GPIO.cleanup()
-    print("GPIO pins cleaned up")
 
 if __name__ == "__main__":
-    connect_to_broker()
+    try:
+        connect_to_broker()
+    except Exception as e:
+        print("An error occurred during operation:", e)
+    finally:
+        GPIO.cleanup()
+        print("GPIO pins cleaned up")
