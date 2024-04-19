@@ -10,18 +10,23 @@ GPIO.setup(valve_pin, GPIO.OUT)
 GPIO.output(valve_pin, GPIO.HIGH)  # Assume starting open is safe
 
 # MQTT Configuration
-MQTT_BROKER = "ip_of_pi4"
+MQTT_BROKER = "192.168.10.172"
 MQTT_PORT = 1883
 MQTT_TOPIC = "solenoid/valve"
 
+# Creating the client and assigning callbacks
 client = mqtt.Client()
+client.on_connect = on_connect
+client.on_disconnect = on_disconnect
+client.on_message = on_message
 
 def on_connect(client, userdata, flags, rc):
+    print(f"Connected with result code {rc}")
     if rc == 0:
-        print("Connected successfully.")
         client.subscribe(MQTT_TOPIC)
+        print(f"Subscribed to {MQTT_TOPIC}")
     else:
-        print("Connection failed with error code " + str(rc))
+        print("Connection failed")
 
 def on_disconnect(client, userdata, rc):
     if rc != 0:
@@ -31,22 +36,25 @@ def on_disconnect(client, userdata, rc):
 def exponential_backoff_reconnect():
     attempt = 0
     while True:
-        jitter = random.uniform(0, 30)  # Up to 30 seconds of random delay
-        delay = min(2 ** attempt + jitter, 300)  # Cap the delay at 5 minutes
+        jitter = random.uniform(0, 30)
+        delay = min(2 ** attempt + jitter, 300)
         print(f"Reconnecting in {delay:.2f} seconds...")
         time.sleep(delay)
         try:
             client.reconnect()
-            break  # Break the loop if reconnect is successful
+            break
         except:
-            attempt += 1  # Increment attempt count and try again
+            attempt += 1
 
 def on_message(client, userdata, msg):
+    print(f"Message received: {msg.payload.decode()} on topic {msg.topic}")
     message = msg.payload.decode("utf-8")
     if message == "on":
         GPIO.output(valve_pin, GPIO.HIGH)
+        print("Solenoid valve opened")
     elif message == "off":
         GPIO.output(valve_pin, GPIO.LOW)
+        print("Solenoid valve closed")
 
 def connect_to_broker():
     try:
